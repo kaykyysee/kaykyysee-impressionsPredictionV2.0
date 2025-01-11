@@ -5,10 +5,17 @@ import re
 from transformers import AutoTokenizer, AutoModel
 import torch
 import scipy.sparse as sp
+import nltk
 from nltk.tokenize import word_tokenize
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import string
+
+# Unduh dataset punkt jika belum tersedia
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
 
 # ==========================
 # 1. Fungsi Caching untuk Load Model dan Tokenizer
