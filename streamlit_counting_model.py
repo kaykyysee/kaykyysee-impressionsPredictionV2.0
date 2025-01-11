@@ -38,7 +38,7 @@ domain_mapping = {
 
 # ==========================
 # 2. Fungsi Preprocessing dan Encoding
-# ==========================
+# ========================== 
 def preprocess_text(text):
     text = re.sub(r'http\S+|https\S+|www\S+|ftp\S+', '', text)  # Remove URLs
     text = re.sub(r'[^\w\s]', '', text.lower())  # Remove punctuation and lowercase
