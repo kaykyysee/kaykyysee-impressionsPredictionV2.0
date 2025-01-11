@@ -7,20 +7,30 @@ import torch
 import scipy.sparse as sp
 
 # ==========================
-# 1. Load Model dan IndoBERT
+# 1. Fungsi Caching untuk Load Model dan Tokenizer
 # ==========================
-model_file = 'lightgbm_model.pkl'
-scaler_file = 'scaler.pkl'
+@st.cache_resource
+def load_model_and_tokenizer():
+    model_file = 'lightgbm_model.pkl'
+    scaler_file = 'scaler.pkl'
+    
+    # Load LightGBM model dan scaler
+    model = joblib.load(model_file)
+    scaler = joblib.load(scaler_file)
+    
+    # Load pre-trained IndoBERT model dan tokenizer
+    model_name = "indobenchmark/indobert-base-p2"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    indobert_model = AutoModel.from_pretrained(model_name)
+    
+    return model, scaler, tokenizer, indobert_model
 
-model = joblib.load(model_file)
-scaler = joblib.load(scaler_file)
+# Load model dan tokenizer sekali saja
+model, scaler, tokenizer, indobert_model = load_model_and_tokenizer()
 
-# Load pre-trained IndoBERT model dan tokenizer
-model_name = "indobenchmark/indobert-base-p2"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-indobert_model = AutoModel.from_pretrained(model_name)
-
-# Domain mapping
+# ==========================
+# 2. Domain Mapping
+# ==========================
 domain_mapping = {
     'news.detik.com': 7,
     'detik.com': 0,
@@ -37,16 +47,22 @@ domain_mapping = {
 }
 
 # ==========================
-# 2. Fungsi Preprocessing dan Encoding
-# ========================== 
+# 3. Fungsi Preprocessing dan Encoding
+# ==========================
+@st.cache_data
 def preprocess_text(text):
+    """
+    Preprocessing teks untuk menghapus URL, tanda baca, dan huruf besar.
+    """
     text = re.sub(r'http\S+|https\S+|www\S+|ftp\S+', '', text)  # Remove URLs
     text = re.sub(r'[^\w\s]', '', text.lower())  # Remove punctuation and lowercase
     return text
 
+@st.cache_data
 def encode_text_with_indobert(texts):
     """
     Fungsi untuk menghasilkan embedding menggunakan IndoBERT.
+    Caching diaktifkan untuk mencegah pengulangan perhitungan embedding.
     """
     tokens = tokenizer(
         texts,
@@ -60,7 +76,7 @@ def encode_text_with_indobert(texts):
     return outputs.last_hidden_state[:, 0, :].cpu().numpy()  # CLS token
 
 # ==========================
-# 3. Streamlit Interface
+# 4. Streamlit Interface
 # ==========================
 st.title("Prediksi Impression Pembaca Postingan Berita Detik.com")
 
@@ -76,7 +92,7 @@ if st.button("Prediksi"):
         text_length = len(processed_text)
 
         # Convert text to IndoBERT embeddings
-        # st.write("Menghasilkan embedding IndoBERT...")
+        st.write("Menghasilkan embedding IndoBERT...")
         text_embedding = encode_text_with_indobert([processed_text])
         text_sparse = sp.csr_matrix(text_embedding)
 
@@ -91,8 +107,6 @@ if st.button("Prediksi"):
 
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
-        # st.write("Dimensi input_features:", input_features.shape)
-        # st.write("Scaler di-fit pada dimensi fitur:", scaler.n_features_in_)
 
         # Scale features
         scaled_features = scaler.transform(input_features)
