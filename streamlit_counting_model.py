@@ -76,7 +76,7 @@ if st.button("Prediksi"):
         text_length = len(processed_text)
 
         # Convert text to IndoBERT embeddings
-        st.write("Menghasilkan embedding IndoBERT...")
+        # st.write("Menghasilkan embedding IndoBERT...")
         text_embedding = encode_text_with_indobert([processed_text])
         text_sparse = sp.csr_matrix(text_embedding)
 
@@ -91,8 +91,8 @@ if st.button("Prediksi"):
 
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
-        st.write("Dimensi input_features:", input_features.shape)
-        st.write("Scaler di-fit pada dimensi fitur:", scaler.n_features_in_)
+        # st.write("Dimensi input_features:", input_features.shape)
+        # st.write("Scaler di-fit pada dimensi fitur:", scaler.n_features_in_)
 
         # Scale features
         scaled_features = scaler.transform(input_features)
