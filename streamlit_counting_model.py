@@ -156,4 +156,7 @@ if st.button("Prediksi"):
             st.error(f"Error saat scaling: {str(e)}")
     else:
         st.warning("Tolong masukkan teks untuk prediksi.")
+# Pastikan fitur sesuai
+st.write("Shape of unique_domains:", len(unique_domains))
+st.write("Expected total features:", len(unique_domains) + text_sparse.shape[1] + 2)  # +2 untuk retweets dan text_length
 
