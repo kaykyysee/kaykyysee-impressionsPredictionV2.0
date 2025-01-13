@@ -93,17 +93,11 @@ def one_hot_encode_domain(domain, unique_domains):
     """
     one_hot = pd.DataFrame([domain], columns=["domain"])
     one_hot_encoded = pd.get_dummies(one_hot, columns=["domain"], prefix="domain")
+    # Pastikan semua kategori muncul dalam encoding
     for col in unique_domains:
         if col not in one_hot_encoded:
             one_hot_encoded[col] = 0
-    one_hot_encoded = one_hot_encoded.astype(int)
-    
-    # Debug: Cetak hasil encoding jika ada error
-    st.write("Debug One-Hot Encoded DataFrame:")
-    st.write(one_hot_encoded)
-    
     return sp.csr_matrix(one_hot_encoded.values)
-
 
 # ==========================
 # 3. Streamlit Interface
@@ -123,11 +117,21 @@ domain = st.selectbox("Pilih Domain", options=[d.split("_")[1] for d in unique_d
 if st.button("Prediksi"):
     if user_text.strip():
         # Preprocess text
+        st.write("Melakukan preprocessing teks...")
         processed_text = preprocess_text(user_text)
         cleaned_text = clean_text_id(processed_text)
         text_length = len(cleaned_text.split())
 
+        # Tampilkan hasil preprocessing
+        st.subheader("Hasil Preprocessing Teks")
+        st.text_area("Teks Setelah Preprocessing", cleaned_text, height=100, disabled=True)
+
+        # Analisis tambahan
+        st.subheader("Analisis Teks")
+        st.write(f"Panjang teks (jumlah kata): {text_length}")
+
         # Convert text to IndoBERT embeddings
+        st.write("Menghasilkan embedding IndoBERT...")
         text_embedding = encode_text_with_indobert([cleaned_text])
         text_sparse = sp.csr_matrix(text_embedding)
 
@@ -143,20 +147,11 @@ if st.button("Prediksi"):
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
 
-        # Debug
-        st.write("Shape of input_features before scaling:", input_features.shape)
-        st.write("Shape of scaler n_features_in_:", scaler.n_features_in_)
-
         # Scale features
-        try:
-            scaled_features = scaler.transform(input_features)
-            prediction = model.predict(scaled_features)
-            st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
-        except ValueError as e:
-            st.error(f"Error saat scaling: {str(e)}")
+        scaled_features = scaler.transform(input_features)
+
+        # Predict
+        prediction = model.predict(scaled_features)
+        st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
     else:
         st.warning("Tolong masukkan teks untuk prediksi.")
-# Pastikan fitur sesuai
-st.write("Shape of unique_domains:", len(unique_domains))
-st.write("Expected total features:", len(unique_domains) + text_sparse.shape[1] + 2)  # +2 untuk retweets dan text_length
-
