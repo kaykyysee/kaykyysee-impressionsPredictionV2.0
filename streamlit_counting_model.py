@@ -23,7 +23,7 @@ except LookupError:
 # ==========================
 @st.cache_resource
 def load_model_and_tokenizer():
-    model_file = 'CatBoostRegressor_model.pkl'
+    model_file = 'catboost_model.pkl'
     scaler_file = 'scaler.pkl'
 
     # Load model dan scaler
