@@ -123,7 +123,10 @@ st.title("Prediksi Jumlah Tayangan Postingan Berita Detik.com 📰")
 # Input text
 user_text = st.text_area("Masukkan Teks Postingan X", height=150, placeholder="Tulis atau paste teks di sini...")
 retweets = st.number_input("Masukkan Jumlah Retweets", min_value=0, value=0, step=1)
+
 domain = st.selectbox("Pilih Domain", options=[d.split("_")[1] for d in unique_domains])
+domain = f"domain_{domain}"  # Tambahkan kembali awalan "domain_"
+st.write(f"Domain terpilih: {domain}")
 
 domain = f"domain_{domain}"  # Tambahkan kembali awalan "domain_"
 
