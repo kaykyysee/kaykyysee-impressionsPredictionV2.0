@@ -103,8 +103,13 @@ def one_hot_encode_domain(domain, unique_domains):
     # Pastikan tipe data numerik
     one_hot_encoded = one_hot_encoded.astype(float)
 
-    return sp.csr_matrix(one_hot_encoded.values)
+    # Validasi jumlah fitur
+    if len(one_hot_encoded.columns) != len(unique_domains):
+        raise ValueError(
+            f"Jumlah fitur encoding ({len(one_hot_encoded.columns)}) tidak sesuai dengan jumlah yang diharapkan ({len(unique_domains)})."
+        )
 
+    return sp.csr_matrix(one_hot_encoded.values)
 
 @st.cache_resource
 def load_domains():
@@ -117,7 +122,6 @@ def load_domains():
 
 # Muat daftar domain unik
 unique_domains = load_domains()
-
 
 # ==========================
 # 3. Streamlit Interface
@@ -156,7 +160,7 @@ if st.button("Prediksi"):
 
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
-
+        
         # Validasi jumlah fitur
         if input_features.shape[1] != scaler.n_features_in_:
             st.error(
@@ -165,9 +169,10 @@ if st.button("Prediksi"):
         else:
             # Scale features
             scaled_features = scaler.transform(input_features)
-
+        
             # Predict
             prediction = model.predict(scaled_features)
             st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
+
     else:
         st.warning("Tolong masukkan teks untuk prediksi.")
