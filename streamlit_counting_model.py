@@ -11,7 +11,6 @@ from nltk.tokenize import word_tokenize
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import string
-import pickle
 
 # Unduh dataset punkt jika belum tersedia
 try:
@@ -20,26 +19,28 @@ except LookupError:
     nltk.download('punkt')
 
 # ==========================
-# 1. Fungsi Caching untuk Load Model dan Tokenizer
+# 1. Fungsi Caching untuk Load Model, Tokenizer, dan Domain
 # ==========================
 @st.cache_resource
 def load_model_and_tokenizer():
     model_file = 'catboost_model.pkl'
     scaler_file = 'scaler.pkl'
+    domains_file = 'domains.pkl'
 
-    # Load model dan scaler
+    # Load model, scaler, dan domains
     model = joblib.load(model_file)
     scaler = joblib.load(scaler_file)
+    unique_domains = joblib.load(domains_file)
 
     # Load pre-trained IndoBERT model dan tokenizer
     model_name = "indobenchmark/indobert-base-p2"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     indobert_model = AutoModel.from_pretrained(model_name, device_map=None).to("cpu")
 
-    return model, scaler, tokenizer, indobert_model
+    return model, scaler, tokenizer, indobert_model, unique_domains
 
-# Load model dan tokenizer sekali saja
-model, scaler, tokenizer, indobert_model = load_model_and_tokenizer()
+# Load model, tokenizer, dan domain sekali saja
+model, scaler, tokenizer, indobert_model, unique_domains = load_model_and_tokenizer()
 
 # ==========================
 # 2. Fungsi Preprocessing dan Encoding
@@ -103,25 +104,15 @@ def one_hot_encode_domain(domain, unique_domains):
     # Pastikan tipe data numerik
     one_hot_encoded = one_hot_encoded.astype(float)
 
-    # Validasi jumlah fitur
+    # Debugging jumlah kolom
     if len(one_hot_encoded.columns) != len(unique_domains):
+        missing_columns = [col for col in unique_domains if col not in one_hot_encoded.columns]
+        extra_columns = [col for col in one_hot_encoded.columns if col not in unique_domains]
         raise ValueError(
-            f"Jumlah fitur encoding ({len(one_hot_encoded.columns)}) tidak sesuai dengan jumlah yang diharapkan ({len(unique_domains)})."
+            f"Jumlah fitur encoding tidak sesuai. Missing: {missing_columns}, Extra: {extra_columns}"
         )
 
     return sp.csr_matrix(one_hot_encoded.values)
-
-@st.cache_resource
-def load_domains():
-    """
-    Load daftar domain dari file domains.pkl.
-    """
-    with open("domains.pkl", "rb") as f:
-        domains = pickle.load(f)
-    return domains
-
-# Muat daftar domain unik
-unique_domains = load_domains()
 
 # ==========================
 # 3. Streamlit Interface
@@ -131,26 +122,33 @@ st.title("Prediksi Jumlah Tayangan Postingan Berita Detik.com 📰")
 # Input text
 user_text = st.text_area("Masukkan Teks Postingan X", height=150, placeholder="Tulis atau paste teks di sini...")
 retweets = st.number_input("Masukkan Jumlah Retweets", min_value=0, value=0, step=1)
-unique_domains = [f"domain_{x}" for x in [
-    "news.detik.com", "detik.com", "hot.detik.com", "wolipop.detik.com",
-    "health.detik.com", "finance.detik.com", "sport.detik.com", "inet.detik.com",
-    "food.detik.com", "travel.detik.com", "oto.detik.com", "haibunda.com"
-]]
 domain = st.selectbox("Pilih Domain", options=[d.split("_")[1] for d in unique_domains])
+
+domain = f"domain_{domain}"  # Tambahkan kembali awalan "domain_"
 
 if st.button("Prediksi"):
     if user_text.strip():
         # Preprocess text
+        st.write("Melakukan preprocessing teks...")
         processed_text = preprocess_text(user_text)
         cleaned_text = clean_text_id(processed_text)
         text_length = len(cleaned_text.split())
 
+        # Tampilkan hasil preprocessing
+        st.subheader("Hasil Preprocessing Teks")
+        st.text_area("Teks Setelah Preprocessing", cleaned_text, height=100, disabled=True)
+
+        # Analisis tambahan
+        st.subheader("Analisis Teks")
+        st.write(f"Panjang teks (jumlah kata): {text_length}")
+
         # Convert text to IndoBERT embeddings
+        st.write("Menghasilkan embedding IndoBERT...")
         text_embedding = encode_text_with_indobert([cleaned_text])
         text_sparse = sp.csr_matrix(text_embedding)
 
         # One-hot encode domain
-        encoded_domain = one_hot_encode_domain(f"domain_{domain}", unique_domains)
+        encoded_domain = one_hot_encode_domain(domain, unique_domains)
 
         # Retweets sparse matrix
         retweets_sparse = sp.csr_matrix([[retweets]])
@@ -160,7 +158,7 @@ if st.button("Prediksi"):
 
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
-        
+
         # Validasi jumlah fitur
         if input_features.shape[1] != scaler.n_features_in_:
             st.error(
@@ -169,10 +167,9 @@ if st.button("Prediksi"):
         else:
             # Scale features
             scaled_features = scaler.transform(input_features)
-        
+
             # Predict
             prediction = model.predict(scaled_features)
             st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
-
     else:
         st.warning("Tolong masukkan teks untuk prediksi.")
