@@ -7,3 +7,5 @@ Sastrawi==1.0.1
 catboost==1.2.7
 sentence_transformers
 nltk==3.8.1
+torch==2.0.1+cpu
+transformers==4.33.2
