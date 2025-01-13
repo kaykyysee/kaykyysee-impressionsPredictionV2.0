@@ -94,7 +94,7 @@ def one_hot_encode_domain(domain, unique_domains):
     One-hot encode domain menjadi sparse matrix tanpa prefiks ganda.
     """
     one_hot = pd.DataFrame([domain], columns=["domain"])
-    one_hot_encoded = pd.get_dummies(one_hot, columns=["domain"])  # Hapus prefix
+    one_hot_encoded = pd.get_dummies(one_hot, columns=["domain"])  # Jangan gunakan prefix
 
     # Pastikan semua kategori dari unique_domains muncul
     for col in unique_domains:
@@ -113,7 +113,6 @@ def one_hot_encode_domain(domain, unique_domains):
         )
 
     return sp.csr_matrix(one_hot_encoded.values)
-
 
 # ==========================
 # 3. Streamlit Interface
