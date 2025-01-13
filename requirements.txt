@@ -7,5 +7,6 @@ Sastrawi==1.0.1
 catboost==1.2.7
 sentence_transformers
 nltk==3.8.1
-torch==
+torch===2.1.0
+torchvision===0.16.0
 transformers==4.33.2
