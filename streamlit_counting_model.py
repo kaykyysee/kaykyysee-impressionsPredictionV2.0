@@ -93,10 +93,15 @@ def one_hot_encode_domain(domain, unique_domains):
     """
     one_hot = pd.DataFrame([domain], columns=["domain"])
     one_hot_encoded = pd.get_dummies(one_hot, columns=["domain"], prefix="domain")
+
     # Pastikan semua kategori muncul dalam encoding
     for col in unique_domains:
         if col not in one_hot_encoded:
             one_hot_encoded[col] = 0
+
+    # Pastikan tipe data numerik untuk mendukung konversi ke sparse matrix
+    one_hot_encoded = one_hot_encoded.astype(float)
+
     return sp.csr_matrix(one_hot_encoded.values)
 
 # ==========================
