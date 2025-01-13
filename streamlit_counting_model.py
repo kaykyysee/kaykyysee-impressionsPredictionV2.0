@@ -97,6 +97,8 @@ def one_hot_encode_domain(domain, unique_domains):
     for col in unique_domains:
         if col not in one_hot_encoded:
             one_hot_encoded[col] = 0
+    # Ubah tipe data menjadi integer
+    one_hot_encoded = one_hot_encoded.astype(int)
     return sp.csr_matrix(one_hot_encoded.values)
 
 # ==========================
