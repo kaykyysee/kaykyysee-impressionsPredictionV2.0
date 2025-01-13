@@ -11,6 +11,7 @@ from nltk.tokenize import word_tokenize
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import string
+import pickle
 
 # Unduh dataset punkt jika belum tersedia
 try:
@@ -94,15 +95,29 @@ def one_hot_encode_domain(domain, unique_domains):
     one_hot = pd.DataFrame([domain], columns=["domain"])
     one_hot_encoded = pd.get_dummies(one_hot, columns=["domain"], prefix="domain")
 
-    # Pastikan semua kategori muncul dalam encoding
+    # Pastikan semua kategori dari unique_domains muncul
     for col in unique_domains:
         if col not in one_hot_encoded:
             one_hot_encoded[col] = 0
 
-    # Pastikan tipe data numerik untuk mendukung konversi ke sparse matrix
+    # Pastikan tipe data numerik
     one_hot_encoded = one_hot_encoded.astype(float)
 
     return sp.csr_matrix(one_hot_encoded.values)
+
+
+@st.cache_resource
+def load_domains():
+    """
+    Load daftar domain dari file domains.pkl.
+    """
+    with open("domains.pkl", "rb") as f:
+        domains = pickle.load(f)
+    return domains
+
+# Muat daftar domain unik
+unique_domains = load_domains()
+
 
 # ==========================
 # 3. Streamlit Interface
@@ -122,21 +137,11 @@ domain = st.selectbox("Pilih Domain", options=[d.split("_")[1] for d in unique_d
 if st.button("Prediksi"):
     if user_text.strip():
         # Preprocess text
-        st.write("Melakukan preprocessing teks...")
         processed_text = preprocess_text(user_text)
         cleaned_text = clean_text_id(processed_text)
         text_length = len(cleaned_text.split())
 
-        # Tampilkan hasil preprocessing
-        st.subheader("Hasil Preprocessing Teks")
-        st.text_area("Teks Setelah Preprocessing", cleaned_text, height=100, disabled=True)
-
-        # Analisis tambahan
-        st.subheader("Analisis Teks")
-        st.write(f"Panjang teks (jumlah kata): {text_length}")
-
         # Convert text to IndoBERT embeddings
-        st.write("Menghasilkan embedding IndoBERT...")
         text_embedding = encode_text_with_indobert([cleaned_text])
         text_sparse = sp.csr_matrix(text_embedding)
 
@@ -152,11 +157,17 @@ if st.button("Prediksi"):
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
 
-        # Scale features
-        scaled_features = scaler.transform(input_features)
+        # Validasi jumlah fitur
+        if input_features.shape[1] != scaler.n_features_in_:
+            st.error(
+                f"Jumlah fitur input ({input_features.shape[1]}) tidak sesuai dengan jumlah yang diharapkan ({scaler.n_features_in_})."
+            )
+        else:
+            # Scale features
+            scaled_features = scaler.transform(input_features)
 
-        # Predict
-        prediction = model.predict(scaled_features)
-        st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
+            # Predict
+            prediction = model.predict(scaled_features)
+            st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
     else:
         st.warning("Tolong masukkan teks untuk prediksi.")
