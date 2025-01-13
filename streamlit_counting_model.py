@@ -33,7 +33,7 @@ def load_model_and_tokenizer():
     # Load pre-trained IndoBERT model dan tokenizer
     model_name = "indobenchmark/indobert-base-p2"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    indobert_model = AutoModel.from_pretrained(model_name)
+    indobert_model = AutoModel.from_pretrained(model_name, device_map=None).to("cpu")
 
     return model, scaler, tokenizer, indobert_model
 
