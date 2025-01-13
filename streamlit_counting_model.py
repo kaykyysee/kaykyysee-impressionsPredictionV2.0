@@ -123,21 +123,11 @@ domain = st.selectbox("Pilih Domain", options=[d.split("_")[1] for d in unique_d
 if st.button("Prediksi"):
     if user_text.strip():
         # Preprocess text
-        st.write("Melakukan preprocessing teks...")
         processed_text = preprocess_text(user_text)
         cleaned_text = clean_text_id(processed_text)
         text_length = len(cleaned_text.split())
 
-        # Tampilkan hasil preprocessing
-        st.subheader("Hasil Preprocessing Teks")
-        st.text_area("Teks Setelah Preprocessing", cleaned_text, height=100, disabled=True)
-
-        # Analisis tambahan
-        st.subheader("Analisis Teks")
-        st.write(f"Panjang teks (jumlah kata): {text_length}")
-
         # Convert text to IndoBERT embeddings
-        st.write("Menghasilkan embedding IndoBERT...")
         text_embedding = encode_text_with_indobert([cleaned_text])
         text_sparse = sp.csr_matrix(text_embedding)
 
@@ -153,11 +143,17 @@ if st.button("Prediksi"):
         # Combine features
         input_features = sp.hstack([text_sparse, encoded_domain, retweets_sparse, length_sparse])
 
-        # Scale features
-        scaled_features = scaler.transform(input_features)
+        # Debug
+        st.write("Shape of input_features before scaling:", input_features.shape)
+        st.write("Shape of scaler n_features_in_:", scaler.n_features_in_)
 
-        # Predict
-        prediction = model.predict(scaled_features)
-        st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
+        # Scale features
+        try:
+            scaled_features = scaler.transform(input_features)
+            prediction = model.predict(scaled_features)
+            st.success(f"Diperkirakan sebanyak: {prediction[0]:,.0f} penayangan akan dicapai dalam 1 minggu")
+        except ValueError as e:
+            st.error(f"Error saat scaling: {str(e)}")
     else:
         st.warning("Tolong masukkan teks untuk prediksi.")
+
