@@ -8,4 +8,6 @@ catboost==1.2.7
 sentence_transformers
 nltk==3.8.1
 torch==2.0.1+cpu
+torchvision==0.15.2+cpu
+torchaudio==2.0.2+cpu
 transformers==4.33.2
